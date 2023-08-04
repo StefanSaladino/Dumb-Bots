@@ -1,0 +1,78 @@
+import discord
+from discord.ext import commands
+import random
+
+bot = commands.Bot(command_prefix='!')
+
+# List to store the participants who joined the game
+participants = []
+
+@bot.event
+async def on_ready():
+    print(f'{bot.user} has connected to Discord!')
+
+@bot.command()
+async def rr(ctx):
+    global participants
+    if len(participants) > 0:
+        await ctx.send("Russian Roulette game is already in progress!")
+        return
+
+    await ctx.send("Russian Roulette game starting now. Type !in to join!")
+
+    def check_in(msg):
+        return msg.content.lower() == "!in" and msg.author not in participants
+
+    try:
+        for i in range(6):  # Change the range to adjust the maximum number of participants
+            message = await bot.wait_for('message', check=check_in)
+            participants.append(message.author)
+            await ctx.send(f"{message.author.mention} has joined the game!")
+
+            if len(participants) >= 6:
+                break
+
+        if len(participants) < 2:
+            await ctx.send("Not enough players to start the game. At least 2 players required.")
+            participants = []
+            return
+
+        await ctx.send("All spots filled. The game begins!")
+
+        while len(participants) > 1:
+            # Randomly choose the bullet slot for this round
+            bullet_slot = random.randint(1, 6)
+
+            # Iterate through each participant and prompt them to shoot
+            for participant in participants[:]:
+                await ctx.send(f"{participant.mention}, it's your turn to shoot! Pick a number between 1 and 6.")
+
+                def check_shot(msg):
+                    return msg.author == participant and msg.content.isdigit() and 1 <= int(msg.content) <= 6
+
+                try:
+                    message = await bot.wait_for('message', check=check_shot, timeout=15)
+                    shot = int(message.content)
+                    if shot == bullet_slot:
+                        await ctx.send(f"*BANG!* You’re dead, {participant.mention}.")
+                        participants.remove(participant)
+                        break
+                    else:
+                        await ctx.send("*Click*. And the game continues!")
+
+                except asyncio.TimeoutError:
+                    await ctx.send(f"{participant.mention} didn't pick a slot in time. They are eliminated!")
+                    participants.remove(participant)
+                    break
+
+            # Randomize the bullet slot for the next round
+            bullet_slot = random.randint(1, 6)
+
+        await ctx.send(f"{participants[0].mention} is the last survivor! The game is over.")
+        participants = []
+
+    except asyncio.TimeoutError:
+        await ctx.send("The Russian Roulette game has been canceled due to inactivity.")
+        participants = []
+
+bot.run('YOUR_BOT_TOKEN')
