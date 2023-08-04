@@ -75,4 +75,25 @@ async def rr(ctx):
         await ctx.send("The Russian Roulette game has been canceled due to inactivity.")
         participants = []
 
+@bot.command()
+async def go(ctx):
+    global participants
+    if len(participants) < 2:
+        await ctx.send("Cannot start the game. At least 2 players required.")
+        return
+
+    if ctx.author in participants:
+        await ctx.send(f"{ctx.author.mention}, are you sure you want to start the game with less than 6 players? Type `yes` to confirm.")
+        try:
+            message = await bot.wait_for('message', check=lambda m: m.author == ctx.author and m.content.lower() == "yes", timeout=15)
+            if message:
+                await ctx.send("All spots filled. The game begins!")
+                return
+
+        except asyncio.TimeoutError:
+            await ctx.send("The confirmation timed out. The game will not be started.")
+            return
+
+    await ctx.send("You are not a participant in the game or the game has not started yet. Use `!rr` command to start the Russian Roulette game.")
+
 bot.run('YOUR_BOT_TOKEN')
